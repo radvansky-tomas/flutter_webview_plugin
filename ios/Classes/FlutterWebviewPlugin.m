@@ -15,13 +15,13 @@ static NSString *const CHANNEL_NAME = @"flutter_webview_plugin";
                methodChannelWithName:CHANNEL_NAME
                binaryMessenger:[registrar messenger]];
 
-    UIViewController *viewController = [UIApplication sharedApplication].delegate.window.rootViewController;
+    FlutterViewController *viewController = [UIApplication sharedApplication].delegate.window.rootViewController;
     FlutterWebviewPlugin* instance = [[FlutterWebviewPlugin alloc] initWithViewController:viewController];
 
     [registrar addMethodCallDelegate:instance channel:channel];
 }
 
-- (instancetype)initWithViewController:(UIViewController *)viewController {
+- (instancetype)initWithViewController:(FlutterViewController *)viewController {
     self = [super init];
     if (self) {
         self.viewController = viewController;
@@ -139,6 +139,22 @@ static NSString *const CHANNEL_NAME = @"flutter_webview_plugin";
             NSNumber *withLocalUrl = call.arguments[@"withLocalUrl"];
             if ( [withLocalUrl boolValue]) {
                 NSURL *htmlUrl = [NSURL fileURLWithPath:url isDirectory:false];
+                NSFileManager *fManager = [NSFileManager defaultManager];
+                if (![fManager fileExistsAtPath:[htmlUrl path]])
+                {
+                    //asset?
+                    NSString* key = [self.viewController lookupKeyForAsset:url];
+                    NSString* path = [[NSBundle mainBundle] pathForResource:key ofType:nil];
+                    
+                    if (![fManager fileExistsAtPath:path])
+                    {
+                        [channel invokeMethod:@"onError" arguments:@{@"code": [NSString stringWithFormat:@"%d", 404], @"error": @"File not found!"}];
+                    }
+                    else
+                    {
+                        htmlUrl = [NSURL fileURLWithPath:path isDirectory:false];
+                    }
+                }
                 if (@available(iOS 9.0, *)) {
                     [self.webview loadFileURL:htmlUrl allowingReadAccessToURL:htmlUrl];
                 } else {
