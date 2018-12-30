@@ -4,6 +4,8 @@ package com.flutter_webview_plugin;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.AssetFileDescriptor;
+import android.content.res.AssetManager;
 import android.graphics.Point;
 import android.view.Display;
 import android.widget.FrameLayout;
@@ -11,31 +13,37 @@ import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
 import android.os.Build;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Map;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.PluginRegistry;
+import io.flutter.view.FlutterView;
 
 /**
  * FlutterWebviewPlugin
  */
 public class FlutterWebviewPlugin implements MethodCallHandler, PluginRegistry.ActivityResultListener {
     private Activity activity;
+    private FlutterView view;
     private WebviewManager webViewManager;
     static MethodChannel channel;
     private static final String CHANNEL_NAME = "flutter_webview_plugin";
 
     public static void registerWith(PluginRegistry.Registrar registrar) {
         channel = new MethodChannel(registrar.messenger(), CHANNEL_NAME);
-        final FlutterWebviewPlugin instance = new FlutterWebviewPlugin(registrar.activity());
+        final FlutterWebviewPlugin instance = new FlutterWebviewPlugin(registrar);
         registrar.addActivityResultListener(instance);
         channel.setMethodCallHandler(instance);
     }
 
-    private FlutterWebviewPlugin(Activity activity) {
-        this.activity = activity;
+    private FlutterWebviewPlugin(PluginRegistry.Registrar registrar) {
+        this.activity = registrar.activity();
+        this.view = registrar.view();
     }
 
     @Override
@@ -105,21 +113,47 @@ public class FlutterWebviewPlugin implements MethodCallHandler, PluginRegistry.A
         FrameLayout.LayoutParams params = buildLayoutParams(call);
 
         activity.addContentView(webViewManager.webView, params);
+        File myFile = new File(url);
+        if (!myFile.exists()) {
+            //Asset
+            AssetManager assetManager = this.activity.getBaseContext().getAssets();
+            String assetKey = this.view.getLookupKeyForAsset(url);
+            try {
+                assetManager.openFd(assetKey).createInputStream();
 
-        webViewManager.openUrl(withJavascript,
-                clearCache,
-                hidden,
-                clearCookies,
-                userAgent,
-                url,
-                headers,
-                withZoom,
-                withLocalStorage,
-                scrollBar,
-                supportMultipleWindows,
-                appCacheEnabled,
-                allowFileURLs
-        );
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            webViewManager.openUrl(withJavascript,
+                    clearCache,
+                    hidden,
+                    clearCookies,
+                    userAgent,
+                    "file:///android_asset/sample.html",
+                    headers,
+                    withZoom,
+                    withLocalStorage,
+                    scrollBar,
+                    supportMultipleWindows,
+                    appCacheEnabled,
+                    true
+            );
+        } else {
+            webViewManager.openUrl(withJavascript,
+                    clearCache,
+                    hidden,
+                    clearCookies,
+                    userAgent,
+                    url,
+                    headers,
+                    withZoom,
+                    withLocalStorage,
+                    scrollBar,
+                    supportMultipleWindows,
+                    appCacheEnabled,
+                    allowFileURLs
+            );
+        }
         result.success(null);
     }
 

@@ -206,6 +206,7 @@ class WebviewManager {
             boolean appCacheEnabled,
             boolean allowFileURLs
     ) {
+        System.out.println(url);
         webView.getSettings().setJavaScriptEnabled(withJavascript);
         webView.getSettings().setBuiltInZoomControls(withZoom);
         webView.getSettings().setSupportZoom(withZoom);
